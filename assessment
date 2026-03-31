@@ -1,416 +1,68 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  User, 
-  Activity, 
-  ClipboardList, 
-  Utensils, 
-  ChevronDown, 
-  Plus, 
-  Trash2, 
-  Save, 
-  Calculator,
-  Search,
-  AlertCircle,
-  CheckSquare,
-  Clock,
-  Briefcase,
-  Dumbbell,
-  FileText,
-  Coffee
-} from 'lucide-react';
+import React, { useState } from 'react';
 
-// 基本代換係數
-const EXCHANGE_VALUES = {
-  '低脂乳品類': { carbs: 12, protein: 8, fat: 4, calories: 120, na: 120, k: 380, p: 250 },
-  '全脂乳品類': { carbs: 12, protein: 8, fat: 8, calories: 150, na: 110, k: 350, p: 230 },
-  '全榖雜糧類': { carbs: 15, protein: 2, fat: 0, calories: 70, na: 2, k: 30, p: 30 },
-  '低氮澱粉': { carbs: 15, protein: 0, fat: 0, calories: 60, na: 1, k: 5, p: 5 },
-  '低脂豆魚蛋肉類': { carbs: 0, protein: 7, fat: 3, calories: 55, na: 50, k: 100, p: 80 },
-  '中脂豆魚蛋肉類': { carbs: 0, protein: 7, fat: 5, calories: 75, na: 60, k: 120, p: 100 },
-  '高脂豆魚蛋肉類': { carbs: 0, protein: 7, fat: 10, calories: 120, na: 70, k: 110, p: 90 },
-  '蔬菜類': { carbs: 5, protein: 1, fat: 0, calories: 25, na: 15, k: 200, p: 30 },
-  '水果類': { carbs: 15, protein: 0, fat: 0, calories: 60, na: 2, k: 150, p: 15 },
-  '油脂與堅果類': { carbs: 0, protein: 0, fat: 5, calories: 45, na: 1, k: 10, p: 5 },
-  '外食類': { carbs: 20, protein: 5, fat: 10, calories: 190, na: 400, k: 150, p: 100 },
-  '醬料類': { carbs: 5, protein: 0, fat: 0, calories: 20, na: 500, k: 50, p: 20 },
-  '保健品類': { carbs: 0, protein: 0, fat: 0, calories: 0, na: 0, k: 0, p: 0 }
-};
-
-// 臨床建議份數預設資料庫
-const INTERVENTION_PRESETS = {
-  'DM': {
-    '1200': { '低脂乳品類': 1.5, '全榖雜糧類': 7.5, '中脂豆魚蛋肉類': 2, '蔬菜類': 3, '水果類': 2, '油脂與堅果類': 2.5 },
-    '1400': { '低脂乳品類': 1.5, '全榖雜糧類': 8, '中脂豆魚蛋肉類': 3, '蔬菜類': 3, '水果類': 2, '油脂與堅果類': 3 },
-    '1500': { '低脂乳品類': 1.5, '全榖雜糧類': 9, '中脂豆魚蛋肉類': 3.5, '蔬菜類': 3, '水果類': 2, '油脂與堅果類': 3.5 },
-    '1600': { '低脂乳品類': 1.5, '全榖雜糧類': 10, '中脂豆魚蛋肉類': 4, '蔬菜類': 3, '水果類': 2, '油脂與堅果類': 4 },
-    '1800': { '低脂乳品類': 1.5, '全榖雜糧類': 11, '中脂豆魚蛋肉類': 5, '蔬菜類': 4, '水果類': 2, '油脂與堅果類': 5 }
-  },
-  'CKD': {
-    '1400': { '全榖雜糧類': 6, '低氮澱粉': 3, '中脂豆魚蛋肉類': 3, '蔬菜類': 3, '水果類': 2, '油脂與堅果類': 4 },
-    '1600': { '全榖雜糧類': 7, '低氮澱粉': 4, '中脂豆魚蛋肉類': 4, '蔬菜類': 3, '水果類': 2, '油脂與堅果類': 5 },
-    '1800': { '全榖雜糧類': 8, '低氮澱粉': 5, '中脂豆魚蛋肉類': 4, '蔬菜類': 4, '水果類': 2, '油脂與堅果類': 6 }
-  }
-};
-
-// 食物資料庫數據
-const FOOD_DATABASE = [
-  { name: '糙米飯', category: '全榖雜糧類', portions: 1, note: '50g (1/4碗)' },
-  { name: '地瓜(中)', category: '全榖雜糧類', portions: 1, note: '55g' },
-  { name: '低脂牛奶', category: '低脂乳品類', portions: 1, note: '240ml' },
-  { name: '雞蛋(大)', category: '中脂豆魚蛋肉類', portions: 1, note: '1顆' },
-  { name: '雞胸肉', category: '低脂豆魚蛋肉類', portions: 1, note: '30g' },
-  { name: '燙青菜', category: '蔬菜類', portions: 1, note: '100g' },
-  { name: '富士蘋果', category: '水果類', portions: 1, note: '小顆1個' },
-  { name: '橄欖油', category: '油脂與堅果類', portions: 1, note: '5g' }
-];
-
-const MEALS = ['早餐', '早點', '午餐', '午點', '晚餐', '晚點'];
-const FOOD_TYPES = Object.keys(EXCHANGE_VALUES);
-const EXERCISE_TYPES = ['排球', '羽毛球', '爬山', '腳踏車', '游泳', '快走', '慢跑'];
-const INTERVENTION_CATEGORIES = ['低脂乳品類', '全脂乳品類', '全榖雜糧類', '低氮澱粉', '低脂豆魚蛋肉類', '中脂豆魚蛋肉類', '蔬菜類', '水果類', '油脂與堅果類'];
-
-const App = () => {
-  // --- 狀態管理 ---
-  const [patientInfo, setPatientInfo] = useState({
-    name: '', birthday: '', gender: '男', height: '', weight: '', weightChange: '', activityLevel: '無',
-    social: { living: '', work: '' },
-    exercise: { frequency: '', time: '', types: [] },
-    otherDietAssessment: ''
+const NutritionAssessment = () => {
+  const [data, setData] = useState({
+    weight: '',
+    height: '',
+    age: '',
+    notes: '',
   });
 
-  const [biochemical, setBiochemical] = useState({
-    HbA1c: '', TG: '', HDL: '', LDL: '', Chol: '', Na: '', K: '', P: '', uricAcid: '', alb: '', UPCR: '', AC: ''
-  });
-
-  const [dietTable, setDietTable] = useState(
-    FOOD_TYPES.reduce((acc, type) => {
-      acc[type] = MEALS.reduce((mealAcc, meal) => { mealAcc[meal] = 0; return mealAcc; }, {});
-      return acc;
-    }, {})
-  );
-
-  const [quickInput, setQuickInput] = useState({ foodName: '', meal: '早餐', portions: 1 });
-  const [pesRecords, setPesRecords] = useState([{ problem: '', etiology: '', symptoms: '' }]);
-  const [intervention, setIntervention] = useState({ targetCalories: '1200', mealCount: 3, condition: '', otherAdvice: '' });
-
-  const [interventionPortions, setInterventionPortions] = useState(
-    INTERVENTION_CATEGORIES.reduce((acc, cat) => {
-      acc[cat] = { total: 0, meals: MEALS.reduce((mAcc, m) => { mAcc[m] = 0; return mAcc; }, {}) };
-      return acc;
-    }, {})
-  );
-
-  // --- 計算指標 ---
-  const metrics = useMemo(() => {
-    const h = parseFloat(patientInfo.height) || 0;
-    const w = parseFloat(patientInfo.weight) || 0;
-    const bday = new Date(patientInfo.birthday);
-    const today = new Date();
-    let age = patientInfo.birthday ? today.getFullYear() - bday.getFullYear() : 0;
-    const bmi = h > 0 ? (w * 10000 / (h * h)).toFixed(1) : 0;
-    const ibw = h > 0 ? ((age < 50 ? 22 : 25) * h * h / 10000).toFixed(1) : 0;
-    const adjWeight = (w > 0 && ibw > 0) ? ((w - ibw) / 4 + parseFloat(ibw)).toFixed(1) : 0;
-    let factor = patientInfo.activityLevel === '中度' ? 35 : (patientInfo.activityLevel === '重度' ? 40 : 30);
-    let baseW = age < 50 ? (parseFloat(bmi) > 24 ? parseFloat(adjWeight) : w) : (parseFloat(bmi) > 25 ? parseFloat(adjWeight) : w);
-    return { age, bmi, ibw, adjWeight, reqKcal: baseW > 0 ? (baseW * factor).toFixed(0) : 0 };
-  }, [patientInfo]);
-
-  const dietTotals = useMemo(() => {
-    let totals = { carbs: 0, protein: 0, fat: 0, calories: 0 };
-    Object.entries(dietTable).forEach(([type, meals]) => {
-      const ex = EXCHANGE_VALUES[type];
-      const p = Object.values(meals).reduce((s, v) => s + (parseFloat(v) || 0), 0);
-      totals.carbs += p * ex.carbs; totals.protein += p * ex.protein; totals.fat += p * ex.fat; totals.calories += p * ex.calories;
-    });
-    const kcal = totals.calories || 1;
-    return { ...totals, cPct: ((totals.carbs * 4 / kcal) * 100).toFixed(1), pPct: ((totals.protein * 4 / kcal) * 100).toFixed(1), fPct: ((totals.fat * 9 / kcal) * 100).toFixed(1) };
-  }, [dietTable]);
-
-  const interventionResult = useMemo(() => {
-    let totals = { carbs: 0, protein: 0, fat: 0, calories: 0 };
-    INTERVENTION_CATEGORIES.forEach(cat => {
-      const ex = EXCHANGE_VALUES[cat];
-      const p = parseFloat(interventionPortions[cat].total) || 0;
-      totals.carbs += p * ex.carbs; totals.protein += p * ex.protein; totals.fat += p * ex.fat; totals.calories += p * ex.calories;
-    });
-    const kcal = totals.calories || 1;
-    return { 
-      carbsG: totals.carbs.toFixed(1), proteinG: totals.protein.toFixed(1), fatG: totals.fat.toFixed(1), 
-      calories: totals.calories.toFixed(0), cPct: ((totals.carbs * 4 / kcal) * 100).toFixed(1), 
-      pPct: ((totals.protein * 4 / kcal) * 100).toFixed(1), fPct: ((totals.fat * 9 / kcal) * 100).toFixed(1) 
-    };
-  }, [interventionPortions]);
-
-  const distributeToMeals = (total, category, mealCount) => {
-    const val = parseFloat(total) || 0;
-    const breakdown = MEALS.reduce((acc, m) => { acc[m] = 0; return acc; }, {});
-    if (val <= 0) return breakdown;
-    const activeIndices = [0, 2, 4];
-    if (mealCount >= 4) activeIndices.push(3);
-    if (mealCount >= 5) activeIndices.push(5);
-    if (mealCount >= 6) activeIndices.push(1);
-    const activeMeals = activeIndices.map(i => MEALS[i]);
-    if (category.includes('乳品') || category.includes('水果')) {
-      const snacks = activeMeals.filter(m => m.includes('點'));
-      const targets = snacks.length > 0 ? snacks : ['早餐'];
-      targets.forEach(m => breakdown[m] = (val / targets.length).toFixed(1));
-    } else if (category.includes('蔬菜')) {
-      const targets = activeMeals.filter(m => m === '午餐' || m === '晚餐');
-      targets.forEach(m => breakdown[m] = (val / (targets.length || 1)).toFixed(1));
-    } else {
-      const mains = activeMeals.filter(m => !m.includes('點'));
-      const targets = mains.length > 0 ? mains : activeMeals;
-      targets.forEach(m => breakdown[m] = (val / targets.length).toFixed(1));
-    }
-    return breakdown;
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setData({ ...data, [name]: value });
   };
 
-  useEffect(() => {
-    const { condition, targetCalories, mealCount } = intervention;
-    if (condition && INTERVENTION_PRESETS[condition]?.[targetCalories]) {
-      const preset = INTERVENTION_PRESETS[condition][targetCalories];
-      const next = { ...interventionPortions };
-      INTERVENTION_CATEGORIES.forEach(cat => {
-        const total = preset[cat] || 0;
-        next[cat] = { total, meals: distributeToMeals(total, cat, mealCount) };
-      });
-      setInterventionPortions(next);
-    }
-  }, [intervention.condition, intervention.targetCalories, intervention.mealCount]);
-
-  const handleQuickAdd = () => {
-    const match = FOOD_DATABASE.find(f => f.name === quickInput.foodName);
-    if (match) {
-      const next = { ...dietTable };
-      next[match.category] = { 
-        ...next[match.category], 
-        [quickInput.meal]: (parseFloat(next[match.category][quickInput.meal]) || 0) + (parseFloat(quickInput.portions) || 0) 
-      };
-      setDietTable(next);
-      setQuickInput({ ...quickInput, foodName: '' });
-    }
-  };
-
-  const handleTotalChange = (cat, val) => {
-    const total = parseFloat(val) || 0;
-    setInterventionPortions(prev => ({
-      ...prev,
-      [cat]: { total, meals: distributeToMeals(total, cat, intervention.mealCount) }
-    }));
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Handle form submission, e.g., send data to an API or store it
+    console.log('Submitted Data:', data);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-800 pb-32">
-      <div className="max-w-6xl mx-auto">
-        <header className="mb-10"><h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">營養諮詢紀錄系統</h1></header>
-
-        {/* 一、營養評估 */}
-        <div className="flex items-center gap-2 mb-6 border-b-2 pb-2 text-indigo-700 border-indigo-200"><User size={24}/><h2 className="text-xl font-bold">一、營養評估</h2></div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="md:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="font-bold text-slate-500 mb-4 border-l-4 border-indigo-500 pl-2">基本與體位資料</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-sm">
-              <div>姓名<input type="text" className="w-full border p-2 rounded mt-1 outline-none" value={patientInfo.name} onChange={e=>setPatientInfo({...patientInfo, name:e.target.value})} /></div>
-              <div>生日<input type="date" className="w-full border p-2 rounded mt-1" value={patientInfo.birthday} onChange={e=>setPatientInfo({...patientInfo, birthday:e.target.value})} /></div>
-              <div>年紀<div className="p-2 bg-slate-50 border rounded mt-1 font-bold text-center">{metrics.age} 歲</div></div>
-              <div>性別<select className="w-full border p-2 rounded mt-1" value={patientInfo.gender} onChange={e=>setPatientInfo({...patientInfo, gender:e.target.value})}><option>男</option><option>女</option></select></div>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-4 bg-indigo-50 rounded-lg border border-indigo-100">
-              <div className="text-center"><p className="text-[10px] font-bold text-indigo-400 uppercase">身高 cm</p><input type="number" className="w-full text-center font-bold bg-transparent outline-none border-b border-indigo-200" value={patientInfo.height} onChange={e=>setPatientInfo({...patientInfo, height:e.target.value})} /></div>
-              <div className="text-center"><p className="text-[10px] font-bold text-indigo-400 uppercase">體重 kg</p><input type="number" className="w-full text-center font-bold bg-transparent outline-none border-b border-indigo-200" value={patientInfo.weight} onChange={e=>setPatientInfo({...patientInfo, weight:e.target.value})} /></div>
-              <div className="text-center"><p className="text-[10px] font-bold text-indigo-400 uppercase">BMI</p><p className="font-bold">{metrics.bmi}</p></div>
-              <div className="text-center"><p className="text-[10px] font-bold text-indigo-400 uppercase">IBW</p><p className="font-bold">{metrics.ibw}</p></div>
-              <div className="text-center"><p className="text-[10px] font-bold text-indigo-400 uppercase">調整體重</p><p className="font-bold text-indigo-600">{metrics.adjWeight}</p></div>
-            </div>
-          </div>
-          <div className="bg-rose-50 p-6 rounded-xl shadow-sm border border-rose-100 text-center">
-            <h3 className="font-bold text-rose-700 mb-4 flex justify-center items-center gap-2"><Calculator size={18}/> 所需熱量評估</h3>
-            <select className="w-full p-2 border rounded bg-white text-xs mb-6 outline-none" value={patientInfo.activityLevel} onChange={e=>setPatientInfo({...patientInfo, activityLevel:e.target.value})}>
-              <option value="無">無或輕度活動</option><option value="中度">中度 (10分鐘能說話無法唱歌)</option><option value="重度">重度 (10分鐘無法唱歌說話)</option>
-            </select>
-            <p className="text-xs text-rose-400 font-bold uppercase tracking-widest">建議總熱量</p>
-            <p className="text-4xl font-black text-rose-600">{metrics.reqKcal} <span className="text-sm">kcal</span></p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <h3 className="font-bold text-slate-500 mb-4 border-l-4 border-indigo-500 pl-2">生化數據紀錄</h3>
-            <div className="grid grid-cols-3 gap-3 text-xs">
-              {Object.keys(biochemical).map(k=>(
-                <div key={k}><label className="text-slate-400 font-bold block mb-1">{k}</label><input type="text" className="w-full border-b focus:border-indigo-500 outline-none" value={biochemical[k]} onChange={e=>setBiochemical({...biochemical,[k]:e.target.value})} /></div>
-              ))}
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <h3 className="font-bold text-slate-500 mb-4 border-l-4 border-indigo-500 pl-2 flex items-center gap-2"><Dumbbell size={18}/> 社會關係與運動評估</h3>
-            <div className="space-y-3">
-              <input type="text" className="w-full border p-2 rounded text-sm outline-none focus:ring-1 focus:ring-indigo-100" placeholder="與家人同住情況、工作情況" value={patientInfo.social.living} onChange={e=>setPatientInfo({...patientInfo, social: {...patientInfo.social, living: e.target.value}})} />
-              <div className="grid grid-cols-2 gap-2">
-                <input type="text" className="border p-2 rounded text-sm outline-none" placeholder="頻率 (次/週)" value={patientInfo.exercise.frequency} onChange={e=>setPatientInfo({...patientInfo, exercise: {...patientInfo.exercise, frequency: e.target.value}})} />
-                <input type="text" className="border p-2 rounded text-sm outline-none" placeholder="時間 (分/次)" value={patientInfo.exercise.time} onChange={e=>setPatientInfo({...patientInfo, exercise: {...patientInfo.exercise, time: e.target.value}})} />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {EXERCISE_TYPES.map(opt => (
-                  <label key={opt} className={`px-2 py-1 rounded text-[11px] border cursor-pointer transition-colors ${patientInfo.exercise.types.includes(opt) ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
-                    <input type="checkbox" className="hidden" onChange={() => {
-                      const next = patientInfo.exercise.types.includes(opt) ? patientInfo.exercise.types.filter(x => x !== opt) : [...patientInfo.exercise.types, opt];
-                      setPatientInfo({...patientInfo, exercise: {...patientInfo.exercise, types: next}});
-                    }} />{opt}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* --- 飲食紀錄與評估 (整合位置) --- */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-12 border-t-4 border-t-emerald-500">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-slate-700 border-l-4 border-emerald-500 pl-2">飲食紀錄</h3>
-          </div>
-
-          {/* 目前飲食統計評估 - 移動至表格上方 */}
-          <div className="grid grid-cols-4 gap-2 text-center bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-8 shadow-inner">
-            <div><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">評估總熱量</p><p className="font-black text-2xl text-slate-800">{dietTotals.calories.toFixed(0)}</p></div>
-            <div className="border-l border-slate-200"><p className="text-[11px] text-emerald-500 font-bold mb-1">醣類 {dietTotals.cPct}%</p><p className="font-bold text-xl">{dietTotals.carbs.toFixed(1)}g</p></div>
-            <div className="border-l border-slate-200"><p className="text-[11px] text-amber-500 font-bold mb-1">蛋白質 {dietTotals.pPct}%</p><p className="font-bold text-xl">{dietTotals.protein.toFixed(1)}g</p></div>
-            <div className="border-l border-slate-200"><p className="text-[11px] text-rose-500 font-bold mb-1">脂肪 {dietTotals.fPct}%</p><p className="font-bold text-xl">{dietTotals.fat.toFixed(1)}g</p></div>
-          </div>
-
-          <div className="bg-slate-50 p-4 rounded-xl mb-6 flex flex-wrap gap-4 items-end border border-slate-200">
-            <div className="flex-1 min-w-[200px]"><label className="text-xs font-bold text-slate-400 mb-1 block">食物搜尋 (食物資料庫)</label><div className="relative"><Search className="absolute left-2 top-2.5 text-slate-300" size={14}/><input list="food-lib-main" className="w-full pl-8 p-2 border rounded outline-none focus:ring-1 focus:ring-emerald-100" placeholder="搜尋..." value={quickInput.foodName} onChange={e=>setQuickInput({...quickInput, foodName:e.target.value})} /></div><datalist id="food-lib-main">{FOOD_DATABASE.map(f=><option key={f.name} value={f.name}>{f.note}</option>)}</datalist></div>
-            <div><label className="text-xs font-bold text-slate-400 mb-1 block">餐次</label><select className="p-2 border rounded bg-white text-sm" value={quickInput.meal} onChange={e=>setQuickInput({...quickInput, meal:e.target.value})}>{MEALS.map(m=><option key={m}>{m}</option>)}</select></div>
-            <div><label className="text-xs font-bold text-slate-400 mb-1 block">份數</label><input type="number" step="0.5" className="w-16 p-2 border rounded" value={quickInput.portions} onChange={e=>setQuickInput({...quickInput, portions:e.target.value})} /></div>
-            <button onClick={handleQuickAdd} className="bg-emerald-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-colors shadow-sm"><Plus size={18}/></button>
-          </div>
-
-          <div className="overflow-x-auto rounded-lg border border-slate-200">
-            <table className="w-full text-xs border-collapse min-w-[1000px]">
-              <thead className="bg-slate-50 text-slate-500 font-bold uppercase">
-                <tr><th className="p-3 border text-left sticky left-0 bg-slate-50">食物類別</th>{MEALS.map(m=><th key={m} className="p-3 border text-center">{m}</th>)}<th className="p-3 border text-center bg-indigo-50 text-indigo-700">蛋白(g)</th><th className="p-3 border text-center bg-emerald-50 text-emerald-700">醣類(g)</th><th className="p-3 border text-center bg-rose-50 text-rose-700">脂肪(g)</th><th className="p-3 border text-center bg-slate-100">電解質估計</th></tr>
-              </thead>
-              <tbody className="divide-y">
-                {FOOD_TYPES.map(type => { 
-                  const ex = EXCHANGE_VALUES[type], p = Object.values(dietTable[type]).reduce((s,v)=>s+(parseFloat(v)||0),0); 
-                  return (
-                    <tr key={type} className="hover:bg-slate-50/50 group transition-colors">
-                      <td className="p-3 border font-bold sticky left-0 bg-white group-hover:bg-slate-50 z-10 shadow-sm">{type}</td>
-                      {MEALS.map(m=>(<td key={m} className="p-2 border text-center"><input type="number" step="0.5" className="w-full text-center outline-none bg-transparent" value={dietTable[type][m]||''} onChange={e=>{const next={...dietTable};next[type][m]=parseFloat(e.target.value)||0;setDietTable(next);}} /></td>))}
-                      <td className="p-3 border text-center font-bold">{(p*ex.protein).toFixed(1)}</td><td className="p-3 border text-center font-bold">{(p*ex.carbs).toFixed(1)}</td><td className="p-3 border text-center font-bold">{(p*ex.fat).toFixed(1)}</td>
-                      <td className="p-3 border text-center text-slate-400 text-[8px] leading-tight">K:{(p*ex.k).toFixed(0)} P:{(p*ex.p).toFixed(0)} Na:{(p*ex.na).toFixed(0)}</td>
-                    </tr>
-                  ); 
-                })}
-              </tbody>
-            </table>
-          </div>
-          
-          <div className="mt-8 pt-6 border-t border-slate-100">
-            <div className="flex items-center gap-2 mb-3 text-emerald-700 font-bold"><Coffee size={18} /><span>其他飲食 (零食、飲料、習慣等)</span></div>
-            <textarea className="w-full h-24 border border-slate-200 rounded-xl p-4 text-sm outline-none bg-slate-50/50 shadow-inner focus:ring-1 focus:ring-emerald-200" placeholder="例如：每日下午一杯微糖拿鐵、睡前一包蘇打餅乾、喜歡吃醃漬物..." value={patientInfo.otherDietAssessment} onChange={e => setPatientInfo({...patientInfo, otherDietAssessment: e.target.value})} />
-          </div>
-        </div>
-
-        {/* 二、營養診斷 (PES) */}
-        <div className="flex items-center gap-2 mb-6 border-b-2 pb-2 text-amber-700 border-amber-200 mt-12"><ClipboardList size={24}/><h2 className="text-xl font-bold">二、營養診斷 (PES)</h2></div>
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-12">
-          {pesRecords.map((r, i) => (
-            <div key={i} className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 pb-6 border-b border-dashed last:border-0 relative text-sm">
-              <div>Problem<select className="w-full border p-2 rounded mt-1 outline-none focus:ring-1 focus:ring-amber-200" value={r.problem} onChange={e=>{const n=[...pesRecords];n[i].problem=e.target.value;setPesRecords(n);}}><option value="">-- 請選擇 --</option><option>NI-1.1 熱量攝取過多</option><option>NI-2.1 攝取不足</option><option>NC-3.3 體重過重</option></select></div>
-              <div>Etiology (r/t)<textarea className="w-full border p-2 rounded mt-1 h-24 outline-none focus:ring-1 focus:ring-amber-200" value={r.etiology} onChange={e=>{const n=[...pesRecords];n[i].etiology=e.target.value;setPesRecords(n);}} placeholder="相關於..." /></div>
-              <div>Symptoms (aeb)<textarea className="w-full border p-2 rounded mt-1 h-24 outline-none focus:ring-1 focus:ring-amber-200" value={r.symptoms} onChange={e=>{const n=[...pesRecords];n[i].symptoms=e.target.value;setPesRecords(n);}} placeholder="表現於..." /></div>
-              {pesRecords.length > 1 && <button onClick={()=>setPesRecords(pesRecords.filter((_,idx)=>idx!==i))} className="absolute -right-2 top-0 text-rose-400 hover:text-rose-600"><Trash2 size={16}/></button>}
-            </div>
-          ))}
-          <button onClick={()=>setPesRecords([...pesRecords,{problem:'',etiology:'',symptoms:''}])} className="w-full py-3 border-2 border-dashed border-amber-200 text-amber-600 rounded-xl font-bold hover:bg-amber-50 transition-colors">+ 新增診斷</button>
-        </div>
-
-        {/* 三、營養介入 */}
-        <div className="flex items-center gap-2 mb-6 border-b-2 pb-2 text-indigo-700 border-indigo-200 mt-12"><Utensils size={24}/><h2 className="text-xl font-bold">三、營養介入計劃</h2></div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-12">
-          {/* 介入統計面板 - 與評估面板格式一致 */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-            <h3 className="font-bold text-slate-500">介入目標營養統計</h3>
-            <div className="flex flex-wrap gap-4 bg-indigo-50 p-4 rounded-xl border border-indigo-100 shadow-inner">
-              <div className="text-center px-4 border-r border-indigo-200">
-                <p className="text-[10px] text-slate-400 font-black uppercase mb-1">建議目標熱量</p>
-                <p className="text-xl font-black text-indigo-800">{interventionResult.calories} <span className="text-xs">kcal</span></p>
-              </div>
-              <div className="text-center px-4"><p className="text-[11px] text-emerald-600 font-bold mb-1">醣類 {interventionResult.cPct}%</p><p className="font-bold text-lg">{interventionResult.carbsG}g</p></div>
-              <div className="text-center px-4"><p className="text-[11px] text-amber-600 font-bold mb-1">蛋白質 {interventionResult.pPct}%</p><p className="font-bold text-lg">{interventionResult.proteinG}g</p></div>
-              <div className="text-center px-4"><p className="text-[11px] text-rose-600 font-bold mb-1">脂肪 {interventionResult.fPct}%</p><p className="font-bold text-lg">{interventionResult.fatG}g</p></div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 bg-slate-50 p-6 rounded-2xl border border-slate-100 items-end text-xs">
-            <div className="bg-white p-3 rounded-xl border shadow-sm">臨床狀況<select className="w-full font-bold mt-1 outline-none" value={intervention.condition} onChange={e=>setIntervention({...intervention, condition:e.target.value})}><option value="">-- 一般 --</option><option value="一般人">一般人</option><option value="DM">DM</option><option value="CKD">CKD</option></select></div>
-            <div className="bg-white p-3 rounded-xl border shadow-sm">目標熱量<select className="w-full font-bold mt-1 outline-none text-indigo-700" value={intervention.targetCalories} onChange={e=>setIntervention({...intervention, targetCalories:e.target.value})}>{['1200','1400','1500','1600','1800','2000'].map(v=><option key={v} value={v}>{v}</option>)}</select></div>
-            <div className="bg-white p-3 rounded-xl border shadow-sm">餐次<select className="w-full font-bold mt-1 outline-none" value={intervention.mealCount} onChange={e=>setIntervention({...intervention, mealCount:parseInt(e.target.value)})}>{[3,4,5,6].map(v=><option key={v} value={v}>{v} 餐</option>)}</select></div>
-            <div className="flex items-center gap-2 text-indigo-500 font-bold p-3"><AlertCircle size={14} /> 比例隨下方份數調整</div>
-          </div>
-
-          <div className="overflow-x-auto border rounded-2xl shadow-inner mb-6">
-            <table className="w-full text-[11px] border-collapse bg-white">
-              <thead className="bg-slate-100 text-slate-600 font-bold uppercase">
-                <tr><th className="p-3 border text-left sticky left-0 bg-slate-100">食物類別</th><th className="p-3 border text-center bg-indigo-100 text-indigo-700 w-24">總份數</th>{MEALS.map(m=><th key={m} className="p-3 border text-center">{m}</th>)}</tr>
-              </thead>
-              <tbody className="divide-y">
-                {INTERVENTION_CATEGORIES.map(cat => (
-                  <tr key={cat} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-3 border font-bold text-slate-700 sticky left-0 bg-white">{cat}</td>
-                    <td className="p-3 border bg-indigo-50/30">
-                      <input type="number" step="0.1" className="w-full text-center font-black text-indigo-600 bg-transparent outline-none border-b border-indigo-200" value={interventionPortions[cat].total} onChange={(e) => handleTotalChange(cat, e.target.value)} />
-                    </td>
-                    {MEALS.map(m => (
-                      <td key={m} className="p-2 border">
-                        <input type="number" step="0.1" className="w-full text-center outline-none bg-transparent" value={interventionPortions[cat].meals[m]} onChange={(e) => { 
-                          const val = parseFloat(e.target.value) || 0; 
-                          setInterventionPortions(prev => { 
-                            const next = { ...prev }; 
-                            next[cat].meals[m] = val; 
-                            next[cat].total = parseFloat(Object.values(next[cat].meals).reduce((s, v) => s + (parseFloat(v) || 0), 0).toFixed(1)); 
-                            return next; 
-                          }); 
-                        }} />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-8 border-t pt-6"><div className="flex items-center gap-2 mb-3 text-slate-700 font-bold"><FileText size={18} className="text-indigo-500" /><span>其他飲食建議 (衛教重點)</span></div><textarea className="w-full h-32 border rounded-xl p-4 text-sm focus:ring-1 focus:ring-indigo-300 outline-none bg-slate-50/30 shadow-inner" placeholder="記錄給予患者的補充建議..." value={intervention.otherAdvice} onChange={e=>setIntervention({...intervention, otherAdvice:e.target.value})} /></div>
-        </div>
-
-        {/* 四、監測與評量 */}
-        <div className="flex items-center gap-2 mb-6 border-b-2 pb-2 text-emerald-700 border-emerald-200 mt-12"><Activity size={24}/><h2 className="text-xl font-bold">四、監測與評量</h2></div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm border-t-4 border-t-emerald-400">
-            <h4 className="font-bold text-emerald-800 mb-4 flex items-center gap-2"><CheckSquare size={18}/> 體位生理監測</h4>
-            {['體重趨勢', 'BMI/IBW 變化', '肌肉量/體脂率'].map(c=>(<label key={c} className="flex items-center gap-3 p-2 hover:bg-emerald-50 rounded-lg text-sm"><input type="checkbox" className="w-4 h-4 rounded text-emerald-600" /> {c}</label>))}
-          </div>
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm border-t-4 border-t-emerald-400">
-            <h4 className="font-bold text-emerald-800 mb-4 flex items-center gap-2"><CheckSquare size={18}/> 生化數據追蹤</h4>
-            {['HbA1c/血糖達標', '腎功能 GFR/Cr', '電解質 Na/K/P'].map(c=>(<label key={c} className="flex items-center gap-3 p-2 hover:bg-emerald-50 rounded-lg text-sm"><input type="checkbox" className="w-4 h-4 rounded text-emerald-600" /> {c}</label>))}
-          </div>
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm border-t-4 border-t-emerald-400"><textarea className="w-full h-32 border rounded-xl p-3 text-xs focus:ring-1 focus:ring-emerald-200 outline-none shadow-inner" placeholder="記錄衛教後的反應或調整紀錄..."></textarea></div>
-        </div>
-
-        {/* 固定底欄 */}
-        <div className="fixed bottom-6 right-6 flex items-center gap-4 bg-white/95 backdrop-blur-sm border border-slate-200 p-4 rounded-3xl shadow-2xl z-50">
-          <div className="text-right px-4 border-r">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter tracking-widest">當前攝取評估 vs 介入目標</p>
-            <p className="text-xl font-black text-indigo-700">
-              {dietTotals.calories.toFixed(0)} <span className="text-sm text-slate-400">/ {interventionResult.calories} kcal</span>
-            </p>
-          </div>
-          <button className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black hover:bg-indigo-700 shadow-lg flex items-center gap-2 transition-all"><Save size={20}/> 儲存紀錄</button>
-        </div>
-      </div>
-    </div>
+    <form onSubmit={handleSubmit}>
+      <h2>Nutrition Consultation Assessment</h2>
+      <label>
+        Weight:
+        <input 
+          type="number" 
+          name="weight" 
+          value={data.weight} 
+          onChange={handleChange} 
+          required 
+        />
+      </label>
+      <label>
+        Height:
+        <input 
+          type="number" 
+          name="height" 
+          value={data.height} 
+          onChange={handleChange} 
+          required 
+        />
+      </label>
+      <label>
+        Age:
+        <input 
+          type="number" 
+          name="age" 
+          value={data.age} 
+          onChange={handleChange} 
+          required 
+        />
+      </label>
+      <label>
+        Notes:
+        <textarea 
+          name="notes" 
+          value={data.notes} 
+          onChange={handleChange} 
+        ></textarea>
+      </label>
+      <button type="submit">Submit</button>
+    </form>
   );
 };
 
-export default App;
+export default NutritionAssessment;
