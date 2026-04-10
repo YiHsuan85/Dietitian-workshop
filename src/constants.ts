@@ -145,8 +145,10 @@ export const FOOD_DATABASE: FoodItem[] = [
   { name: '燒餅', category: '外食類', carbs: 51.1, protein: 9.1, fat: 9.1, kcal: 323, na: 458, k: 81, p: 65 },
   { name: '韭菜盒子', category: '外食類', carbs: 19.5, protein: 7.5, fat: 12.1, kcal: 217, na: 287, k: 180, p: 66 },
   { name: '水煎包', category: '外食類', carbs: 25.2, protein: 4.3, fat: 5.4, kcal: 167, na: 310, k: 129, p: 48 },
+  { name: '鮮奶起司爆漿包1個110g', category: '外食類', carbs: 51.5, protein: 12, fat: 8.6, kcal: 332.9, na: 458, k: '', p: '' },
   { name: '蚵仔煎', category: '外食類', carbs: 19.7, protein: 4.9, fat: 10.4, kcal: 192, na: 479, k: 91, p: 91 },
   { name: '肉羹', category: '外食類', carbs: 18.9, protein: 9.7, fat: 14.7, kcal: 247, na: 512, k: 102, p: 198 },
+  { name: '桂冠黃金起司球 30g', category: '外食類', carbs: 3.7, protein: 3.1, fat: 1.8, kcal: 43, na: 169, k: '', p: '' },
   { name: '711阜杭豆漿里肌肉紫米飯糰 207g', category: '外食類', carbs: 65.6, protein: 12.8, fat: 12, kcal: 422, na: 511, k:'', p: ''},
   // 醬料類
   { name: '醬油膏 5g', category: '醬料類', carbs: 1, protein: 0.3, fat: 0, kcal: 5, na: 202.5, k: 16.4, p: 5.5 },
