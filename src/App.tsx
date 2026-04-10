@@ -11,10 +11,12 @@ import {
   Calendar,
   User,
   Calculator,
-  ArrowRight
+  ArrowRight,
+  FileDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppState, FoodItem, PES, MonitoringRecord } from './types';
+import { generateWordDoc } from './lib/wordGenerator';
 import { 
   LineChart, 
   Line, 
@@ -34,7 +36,8 @@ import {
   ACTIVITY_FACTORS,
   INTERVENTION_CATEGORIES,
   DIET_LOG_CATEGORIES,
-  NUTRITION_EDUCATION_CONTENT
+  NUTRITION_EDUCATION_CONTENT,
+  BIO_RANGES
 } from './constants';
 
 const INITIAL_STATE: AppState = {
@@ -293,16 +296,51 @@ export default function App() {
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center gap-2">
+          <div className="flex justify-between h-16 items-center gap-4">
+            <div className="flex items-center gap-2 shrink-0">
               <div className="p-2 bg-blue-600 rounded-lg">
-                <ClipboardList className="w-6 h-6 text-white" />
+                <ClipboardList className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+              <h1 className="text-lg sm:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 truncate">
                 營養諮詢系統
               </h1>
             </div>
-            <div className="hidden md:flex space-x-1">
+            
+            <div className="flex items-center gap-1 sm:gap-2">
+              <button 
+                onClick={() => generateWordDoc(state)}
+                className="flex items-center gap-2 px-2 sm:px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium"
+                title="下載 Word"
+              >
+                <FileDown className="w-4 h-4" />
+                <span className="hidden sm:inline">下載 Word</span>
+              </button>
+              <button 
+                onClick={() => {
+                  if(confirm('確定要清空所有紀錄嗎？')) setState(INITIAL_STATE);
+                }}
+                className="flex items-center gap-2 px-2 sm:px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
+                title="清空"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="hidden sm:inline">清空</span>
+              </button>
+              <button 
+                onClick={handleSave}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md text-sm font-medium shrink-0"
+              >
+                <Save className="w-4 h-4" />
+                <span className="hidden sm:inline">儲存紀錄</span>
+                <span className="sm:hidden">儲存</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Tab Navigation - Scrollable on mobile */}
+        <div className="border-t border-slate-100 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex overflow-x-auto no-scrollbar py-2 space-x-1">
               {[
                 { id: 'assessment', label: '營養評估', icon: User },
                 { id: 'diagnosis', label: '營養診斷', icon: Stethoscope },
@@ -312,7 +350,7 @@ export default function App() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap shrink-0 ${
                     activeTab === tab.id 
                       ? 'bg-blue-50 text-blue-700 shadow-sm' 
                       : 'text-slate-600 hover:bg-slate-100'
@@ -322,31 +360,6 @@ export default function App() {
                   {tab.label}
                 </button>
               ))}
-            </div>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={handlePrint}
-                className="hidden sm:flex items-center gap-2 px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <Activity className="w-4 h-4" />
-                <span>列印</span>
-              </button>
-              <button 
-                onClick={() => {
-                  if(confirm('確定要清空所有紀錄嗎？')) setState(INITIAL_STATE);
-                }}
-                className="hidden sm:flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>清空</span>
-              </button>
-              <button 
-                onClick={handleSave}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
-              >
-                <Save className="w-4 h-4" />
-                <span>儲存紀錄</span>
-              </button>
             </div>
           </div>
         </div>
@@ -634,17 +647,42 @@ export default function App() {
                   </h2>
                 </div>
                 <div className="p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-                  {Object.keys(state.biochemistry).map(key => (
-                    <div key={key} className="space-y-1">
-                      <label className="text-xs font-medium text-slate-500 uppercase">{key}</label>
-                      <input 
-                        type="text" 
-                        value={state.biochemistry[key]} 
-                        onChange={e => setState({...state, biochemistry: {...state.biochemistry, [key]: e.target.value}})}
-                        className="w-full px-2 py-1 text-sm rounded border border-slate-200" 
-                      />
-                    </div>
-                  ))}
+                  {Object.keys(state.biochemistry).map(key => {
+                    const range = BIO_RANGES[key];
+                    const val = state.biochemistry[key];
+                    const num = parseFloat(val);
+                    let isAbnormal = false;
+                    if (range && val && !isNaN(num)) {
+                      if (range.min !== undefined && range.max !== undefined) {
+                        isAbnormal = num < range.min || num > range.max;
+                      } else if (range.max !== undefined) {
+                        isAbnormal = num >= range.max;
+                      } else if (range.min !== undefined) {
+                        isAbnormal = num <= range.min;
+                      }
+                    }
+
+                    return (
+                      <div key={key} className="space-y-1">
+                        <label className="text-xs font-medium text-slate-500 uppercase">{key === 'FPG' ? 'AC (FPG)' : key}</label>
+                        <input 
+                          type="text" 
+                          value={val} 
+                          onChange={e => setState({...state, biochemistry: {...state.biochemistry, [key]: e.target.value}})}
+                          className={`w-full px-2 py-1 text-sm rounded border transition-colors ${
+                            isAbnormal 
+                              ? 'border-red-500 bg-red-50 text-red-700 focus:ring-red-500' 
+                              : 'border-slate-200 focus:ring-blue-500'
+                          }`} 
+                        />
+                        {range && (
+                          <div className="text-[10px] text-slate-400 font-medium">
+                            標準: {range.label}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
 
